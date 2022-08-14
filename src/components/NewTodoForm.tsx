@@ -10,8 +10,8 @@ const NewTodoForm: React.FC<NewTodoFormProps> = ({value, updateText, handleActio
 
     return (
       <label>
-          <input className={'py-2 px-4 border-black rounded-full outline-none'} placeholder='new todo' value={value} onChange={e=>updateText(e.target.value)}/>
-          <button className={'py-2 px-4'} onClick={()=>handleAction()}>Add new task </button>
+          <input className={'py-2 px-4 border rounded-full'} placeholder='new todo' value={value} onChange={e=>updateText(e.target.value)}/>
+          <button className={'py-2 px-4 border rounded-full bg-amber-200'} onClick={()=>handleAction()}>Add new task </button>
       </label>
   )
 }

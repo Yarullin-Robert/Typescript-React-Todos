@@ -1,4 +1,4 @@
-import {createAsyncThunk, createSlice, PayloadAction} from "@reduxjs/toolkit";
+import {AnyAction, createAsyncThunk, createSlice, PayloadAction} from "@reduxjs/toolkit";
 
 type Todo = {
 	id: string
@@ -81,7 +81,7 @@ export const deleteTodo = createAsyncThunk<string, string, {rejectValue: string}
 const initialState: TodosState = {
 	loading:false,
 	error:null,
-	list: [{id:'1',completed:false,title:''}]
+	list: []
 }
 
 const todoSlice = createSlice({
@@ -108,35 +108,50 @@ const todoSlice = createSlice({
 	extraReducers: (builder) => {
 		builder
 			.addCase(fetchTodos.pending, (state, action) => {
+				console.log(action.type)
 				state.loading = true
 				state.error = null
 			})
 			.addCase(fetchTodos.fulfilled, (state, action) => {
 				state.list = action.payload
+				state.loading = false
 			})
 			.addCase(addNewTodo.pending, (state, action)=> {
+				console.log(action.type)
 				state.error = null
 			})
 			.addCase(addNewTodo.fulfilled, (state, action) => {
 				state.list.push(action.payload)
 			})
 			.addCase(toggleTodo.pending, (state, action) => {
+				console.log(action.type)
 				state.error = null
 			})
 			.addCase(toggleTodo.fulfilled, (state, action) => {
 				const toggledTodo = state.list.find(todo => todo.id === action.payload.id)
-				if (toggledTodo) {toggledTodo.completed = !toggledTodo.completed}
+				if (toggledTodo) {
+					toggledTodo.completed = !toggledTodo.completed
+				}
 			})
 			.addCase(deleteTodo.pending, (state, action) => {
+				console.log(action.type)
 				state.error = null
 			})
 			.addCase(deleteTodo.fulfilled, (state, action) => {
 				state.list = state.list.filter(todo => todo.id !== action.payload)
 			})
+			.addMatcher(isError, (state, action: PayloadAction<string>) => {
+				state.error=action.payload
+				state.loading = false
+			})
 	},
 });
 
-export const { } =
-	todoSlice.actions;
+// export const { } =
+// 	todoSlice.actions;
 
 export default todoSlice.reducer;
+
+function isError(action: AnyAction) {
+	return action.type.endsWith('rejected')
+}
