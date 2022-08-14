@@ -2,7 +2,7 @@ import React, {useState} from 'react'
 import NewTodoForm from "../components/NewTodoForm";
 import TodoList from "../components/TodoList";
 import {useAppDispatch} from "../hooks/hooks";
-import {addTodo} from "../redux/todoSlice";
+import {addNewTodo} from "../redux/todoSlice";
 
 const TodoPage: React.FC = () => {
     const [text,setText] = useState('')
@@ -10,7 +10,7 @@ const TodoPage: React.FC = () => {
     const updateText = (e:string) => setText(e)
     const handleAction = () => {
         if (text.trim().length){
-            dispatch(addTodo(text))
+            dispatch(addNewTodo(text))
             setText('')
         }
     }
