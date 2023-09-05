@@ -1,4 +1,6 @@
-import {AnyAction, createAsyncThunk, createSlice, PayloadAction} from "@reduxjs/toolkit";
+import { AnyAction,createAsyncThunk, createSlice, PayloadAction} from "@reduxjs/toolkit";
+import {addTodoFire, deleteTodoFire, getTodos, updateTodoFire} from "../firebase";
+import {ITodo} from "../components/types/types";
 
 type Todo = {
 	id: string
@@ -24,60 +26,38 @@ export const fetchTodos = createAsyncThunk<Todo[], void, {rejectValue: string}>(
 		return await response.json();
 	}
 );
-export const addNewTodo = createAsyncThunk<Todo, string, {rejectValue: string}>(
-	'todos/addNewTodo',
-	async function (text,{rejectWithValue}){
-		const todo = {
-			userId: 1,
-			title:text,
-			completed:false
-		}
-		const response = await fetch(todoUrl,{
-			method:'POST',
-			headers:{
-				'content-type':'application/json'
-			},
-			body: JSON.stringify(todo)
-		})
-		if (!response.ok){
-			return rejectWithValue('Can`t add task. Server error!')
-		}
-		return (await response.json()) as Todo
 
+export const addNewTodo = createAsyncThunk<string, {uId:string,title:string}, {rejectValue: string}>(
+	'todos/addNewTodo',
+	async function ({uId,title},{rejectWithValue}){
+		await addTodoFire(uId,title)
+		console.log('Adding new todo to Firebase finished')
+		return uId
 	}
 );
-export const toggleTodo = createAsyncThunk<Todo, string, {rejectValue: string, state: {todos: TodosState}}>(
+export const toggleTodo = createAsyncThunk<string, {uId:string, id:string }, {rejectValue: string, state: {todos: TodosState}}>(
 	'todos/toggleTodo',
-	async function (id,{rejectWithValue, getState}) {
+	async function ({uId, id},{rejectWithValue, getState}) {
 		const todo = getState().todos.list.find(todo => todo.id === id)
-		if(todo){
-			const response = await fetch(todoUrl+'/'+id,{
-				method: 'PATCH',
-				headers:{
-					'Content-type':'application/json'
-				},
-				body: JSON.stringify({
-					completed: !todo.completed
-				})
-			})
-			if (!response.ok) rejectWithValue('Can`t toggle status. Server error!')
-			return await response.json() as Todo
-		}
-		return rejectWithValue('No such Todo in the list!')
-	}
-)
-export const deleteTodo = createAsyncThunk<string, string, {rejectValue: string}>(
-	'todos/deleteTodo',
-	async function (id,{rejectWithValue}) {
-		const response = await fetch(todoUrl + '/' + id, {
-				method: 'DELETE'
-			}
-		)
-		if (!response.ok) rejectWithValue('Can`t delete Todo. Server error!')
+		todo && await updateTodoFire(uId, id,{completed:!todo.completed})
 		return id
 	}
 )
-
+export const deleteTodo = createAsyncThunk<string, {uId:string,id:string}, {rejectValue: string}>(
+	'todos/deleteTodo',
+	async function ({uId,id},{rejectWithValue}) {
+		await deleteTodoFire(uId,id)
+		return id
+	}
+)
+export const fetchTodosFire = createAsyncThunk<ITodo[],string, {rejectValue: string}>(
+	'todos/fetchTodosFire',
+	async (uId,{rejectWithValue}) => {
+		const data = await getTodos(uId)
+		if (!data) rejectWithValue('Can`t resolve todos from firestore')
+		return data as ITodo[]
+	}
+)
 const initialState: TodosState = {
 	loading:false,
 	error:null,
@@ -87,32 +67,26 @@ const initialState: TodosState = {
 const todoSlice = createSlice({
 	name: "todos",
 	initialState,
-	reducers: {
-		// addTodo(state, action: PayloadAction<string>) {
-		// 	state.list.push({
-		// 		id: new Date().toISOString(),
-		// 		title:action.payload,
-		// 		completed:false
-		// 	})
-		// },
-		// toggleComplete(state, action: PayloadAction<string>) {
-		// 	const toggledTodo = state.list.find(todo => todo.id === action.payload)
-		// 	if(toggledTodo){
-		// 		toggledTodo.completed = !toggledTodo.completed
-		// 	}
-		// },
-		// removeTodo(state, action: PayloadAction<string>) {
-		// 	state.list = state.list.filter(todo => todo.id !== action.payload)
-		// }
-	},
+	reducers: {},
 	extraReducers: (builder) => {
 		builder
+			.addCase(fetchTodosFire.pending, (state, action)=>{
+				console.log(action.type)
+				state.loading = true
+				state.error = null
+			})
+			.addCase(fetchTodosFire.fulfilled, (state, action)=>{
+				console.log(action.type)
+				state.list = action.payload
+				state.loading = false
+			})
 			.addCase(fetchTodos.pending, (state, action) => {
 				console.log(action.type)
 				state.loading = true
 				state.error = null
 			})
 			.addCase(fetchTodos.fulfilled, (state, action) => {
+				console.log(action.type)
 				state.list = action.payload
 				state.loading = false
 			})
@@ -121,23 +95,24 @@ const todoSlice = createSlice({
 				state.error = null
 			})
 			.addCase(addNewTodo.fulfilled, (state, action) => {
-				state.list.push(action.payload)
+				console.log(action.type)
+				// state.list.push(action.payload)
 			})
 			.addCase(toggleTodo.pending, (state, action) => {
 				console.log(action.type)
 				state.error = null
 			})
 			.addCase(toggleTodo.fulfilled, (state, action) => {
-				const toggledTodo = state.list.find(todo => todo.id === action.payload.id)
-				if (toggledTodo) {
-					toggledTodo.completed = !toggledTodo.completed
-				}
+				console.log(action.type)
+				const toggledTodo = state.list.find(todo => todo.id === action.payload)
+				toggledTodo && (toggledTodo.completed = !toggledTodo.completed)
 			})
 			.addCase(deleteTodo.pending, (state, action) => {
 				console.log(action.type)
 				state.error = null
 			})
 			.addCase(deleteTodo.fulfilled, (state, action) => {
+				console.log(action.type)
 				state.list = state.list.filter(todo => todo.id !== action.payload)
 			})
 			.addMatcher(isError, (state, action: PayloadAction<string>) => {
@@ -147,9 +122,7 @@ const todoSlice = createSlice({
 	},
 });
 
-// export const { } =
-// 	todoSlice.actions;
-
+// export const {} = todoSlice.actions
 export default todoSlice.reducer;
 
 function isError(action: AnyAction) {
